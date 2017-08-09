@@ -132,7 +132,8 @@ initializeDataTable = ->
       api = @api()
       $.each api.rows(page: 'current').data(), (i, data) ->
         if data.action is 'cloud recordings updated' or
-           data.action is 'cloud recordings created'
+           data.action is 'cloud recordings created' or
+           data.action is 'edited'
           $("table#logs-table > tbody > tr:eq(#{i}) td:eq(0)")
             .addClass("details-control")
             .html("<i class='fa fa-plus expand-icon' aria-hidden='true'></i>")
@@ -149,6 +150,69 @@ format = (row) ->
       "
     else
       return "No data available."
+  else if row.action is 'edited'
+    if row.extra.cam_settings != false
+      return "
+        <table cellpadding='5' cellspacing='0' border='0' style='padding-left:50px;width:100%'>
+          #{getCameraValues(row.extra.cam_settings)}
+        </table>
+      "
+    else
+      return "No data available."
+
+getCameraValues = (data) ->
+  if data
+    return "
+      <tbody style='float: left; margin-left: 24px;'>
+        <tr>
+          <th style='background-color: #f1f1f1; font-size: 12px;'>Settings</th>
+          <th style='background-color: #f1f1f1; font-size: 12px;'>Old</th>
+          <th style='background-color: #f1f1f1; font-size: 12px;'>New</th>
+        </tr>
+        <tr>
+          <td>IP</td>
+          <td>#{data.old.external_host}</td>
+          <td>#{data.new.external_host}</td>
+        </tr>
+        <tr>
+          <td>HTTP Port</td>
+          <td>#{data.old.external_http_port}</td>
+          <td>#{data.new.external_http_port}</td>
+        </tr>
+        <tr>
+          <td>RTSP Port</td>
+          <td>#{data.old.external_rtsp_port}</td>
+          <td>#{data.new.external_rtsp_port}</td>
+        </tr>
+        <tr>
+          <td>Snapshot URL</td>
+          <td>#{data.old.snapshot_url}</td>
+          <td>#{data.new.snapshot_url}</td>
+        </tr>
+        <tr>
+          <td>Username</td>
+          <td>#{data.old.auth.username}</td>
+          <td>#{data.new.auth.username}</td>
+        </tr>
+        <tr>
+          <td>Password</td>
+          <td>#{data.old.auth.password}</td>
+          <td>#{data.new.auth.password}</td>
+        </tr>
+        <tr>
+          <td>Model</td>
+          <td>#{data.old.vendor_model_name}</td>
+          <td>#{data.new.vendor_model_name}</td>
+        </tr>
+        <tr>
+          <td>Vendor</td>
+          <td>#{data.old.vendor_name}</td>
+          <td>#{data.new.vendor_name}</td>
+        </tr>
+      </tbody>
+    "
+  else
+    ""
 
 getTableValues = (data) ->
   if data
