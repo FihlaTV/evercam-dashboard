@@ -554,7 +554,6 @@ loadMdImages = ->
     timestamp = image_control.attr("timestamp")
     data = {}
     data.notes = notes
-    data.with_data = true
     data.range = 2
     data.api_id = Evercam.User.api_id
     data.api_key = Evercam.User.api_key
@@ -580,7 +579,6 @@ loadMdImages = ->
 
 loadImage = (timestamp, notes) ->
   data = {}
-  data.with_data = true
   data.range = 2
   data.notes = notes
   data.api_id = Evercam.User.api_id
@@ -816,7 +814,6 @@ DoNextImg = ->
   snapshot = snapshotInfos[snapshotInfoIdx]
 
   data = {}
-  data.with_data = true
   data.range = 2
   data.notes = snapshot.notes
   data.api_id = Evercam.User.api_id

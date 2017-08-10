@@ -28,7 +28,6 @@ hide_gif = (control_id) ->
 refreshCameraStatus = (cam_id, contr_id) ->
   NProgress.start()
   data = {}
-  data.with_data = true
 
   camera_id = cam_id
   control_id = contr_id

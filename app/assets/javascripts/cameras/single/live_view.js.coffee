@@ -40,7 +40,6 @@ hidegif = ->
 refreshCameraStatus = ->
   NProgress.start()
   data = {}
-  data.with_data = true
 
   onError = (jqXHR, status, error) ->
     message = jqXHR.responseJSON.message
