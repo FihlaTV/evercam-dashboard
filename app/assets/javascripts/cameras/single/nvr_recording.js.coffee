@@ -274,6 +274,7 @@ on_ended_play = ->
     $("#local-recording-video-player div.vjs-error-display").hide()
 
 load_no_video_graph = (year, month, day, hour) ->
+  thumbnails_array = {}
   times_list =
     [
       [
