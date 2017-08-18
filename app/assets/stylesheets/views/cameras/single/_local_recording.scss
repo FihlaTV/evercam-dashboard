@@ -60,7 +60,8 @@
     background-position: center center;
     background-repeat: no-repeat;
     height: auto;
-    width: 150px;
+    width: 180px;
+    padding: 5px 0;
   }
 
   li.active {
@@ -84,10 +85,6 @@
 
   foreignObject.ytitle {
     display: none;
-  }
-
-  .rect_has_data {
-    cursor: pointer;
   }
 
   .vjs-loading-spinner {
@@ -136,6 +133,10 @@
     top: 40%;
     left: 47%;
     border-radius: 100px !important;
+  }
+
+  .vjs-live-display {
+    display: none;
   }
 
   .image_save {
@@ -209,10 +210,15 @@
   }
 
   .rect_has_data {
+    cursor: pointer;
     fill: #8cbae3;
   }
 
   .rect_has_data:hover {
-    fill: #458cc7
+    fill: #458cc7;
+  }
+
+  .rect_has_data_active {
+    fill: #458cc7 !important;
   }
 }

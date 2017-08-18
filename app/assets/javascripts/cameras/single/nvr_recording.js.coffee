@@ -2,6 +2,7 @@ retries = 0
 total_tries = 6
 BoldDays = []
 is_come_from_url = false
+thumbnails_array = {}
 
 showFeedback = (message) ->
   Notification.show(message)
@@ -14,6 +15,30 @@ SetInfoMessage = (from, to) ->
   url = "#{Evercam.request.rootpath}/local-recordings?from=#{from_dt.toISOString()}&to=#{to_dt}"
   if $("#ul-nav-tab li.active a").text() is "Local Recordings" && history.replaceState
     window.history.replaceState({}, '', url)
+
+get_thumbnail = (from) ->
+  data =
+    api_id: Evercam.User.api_id
+    api_key: Evercam.User.api_key
+
+  onSuccess = (response) ->
+    if response.snapshots.length > 0
+      thumbnails_array["#{this.from}"] = response.snapshots[0].data
+
+  onError = (jqXHR, status, error) ->
+    false
+
+  settings =
+    cache: false
+    data: data
+    dataType: 'json'
+    error: onError
+    success: onSuccess
+    context: {from: from}
+    type: 'GET'
+    url: "#{Evercam.API_URL}cameras/#{Evercam.Camera.id}/recordings/snapshots/#{from}/nearest" #{Evercam.API_URL}
+
+  $.ajax(settings)
 
 load_stream = (from, to) ->
   $("#local-recording-video-player .vjs-loading-spinner").show()
@@ -202,17 +227,23 @@ handleResize = ->
     set_position()
     load_graph(JSON.parse($("#txtData").val())) unless $("#txtData").val() is ""
 
-  $(window).unload ->
-    console.log("Handler for .unload() called.")
-
 handleTabOpen = ->
   $('.nav-tab-local-recordings').on 'shown.bs.tab', ->
+    hr = FormatNumTo2($("#local_recording_hourCalendar td.active").text())
+    $("#nvr-time_select").val("#{hr}:00:00")
     onChangeStream()
+    $("#local_recordings_tab .rect_has_data").removeClass("rect_has_data_active")
+    $("#g_data rect:first-child").addClass("rect_has_data_active")
     set_position()
   $('.nav-tab-local-recordings').on 'hide.bs.tab', ->
     window.vjs_player_local.pause()
+    window.vjs_player_local.reset()
     closeStream()
   $("#spn_load_stream").on "click", ->
+    time = $("#nvr-time_select").val().split(":")
+    chunk = Math.ceil(parseInt(time[1]) / 5)
+    $("#local_recordings_tab .rect_has_data").removeClass("rect_has_data_active")
+    $("#time_graph rect:nth-child(#{chunk})").addClass("rect_has_data_active")
     onChangeStream()
 
 onChangeStream = ->
@@ -221,8 +252,8 @@ onChangeStream = ->
   month = date.getMonth() + 1
   day = date.getDate()
   hr = $("#local_recording_hourCalendar td.active").text()
-  from = moment.tz("#{year}-#{month}-#{day} #{$("#nvr-time_select").val()}", Evercam.Camera.timezone) / 1000
-  to = moment.tz("#{year}-#{month}-#{day} #{hr}:59:59", Evercam.Camera.timezone) / 1000
+  from = moment.utc("#{year}-#{month}-#{day} #{$("#nvr-time_select").val()}", "YYYY-MM-DD HH:mm:ss") / 1000
+  to = moment.utc("#{year}-#{month}-#{day} #{hr}:59:59", "YYYY-MM-DD HH:mm:ss") / 1000
   if window.vjs_player_local
     window.vjs_player_local.pause()
   load_stream(from, to)
@@ -254,9 +285,14 @@ load_no_video_graph = (year, month, day, hour) ->
   $("#txtData").val(JSON.stringify(times_list))
   load_graph(times_list)
 
+download_thumbnails = (times) ->
+  $.each times, (index, time) ->
+    get_thumbnail(moment.utc(time[0]) / 1000)
+
 init_graph = (hr) ->
   onSuccess = (response) ->
     if response.times_list.length > 0
+      download_thumbnails(response.times_list)
       $("#txtData").val(JSON.stringify(response.times_list))
       load_graph(response.times_list)
       if !is_come_from_url && $("#ul-nav-tab li.active a").text() is "Local Recordings"
@@ -277,8 +313,8 @@ init_graph = (hr) ->
   year = date.getFullYear()
   month = date.getMonth() + 1
   day = date.getDate()
-  from = moment.tz("#{year}-#{month}-#{day} #{hr}:00:00", Evercam.Camera.timezone) / 1000
-  to = moment.tz("#{year}-#{month}-#{day} #{hr}:59:59", Evercam.Camera.timezone) / 1000
+  from = moment.utc("#{year}-#{month}-#{day} #{hr}:00:00", "YYYY-MM-DD HH:mm:ss") / 1000
+  to = moment.utc("#{year}-#{month}-#{day} #{hr}:59:59", "YYYY-MM-DD HH:mm:ss") / 1000
 
   query_string = "?api_id=#{Evercam.User.api_id}&api_key=#{Evercam.User.api_key}"
   query_string += "&starttime=#{from}&endtime=#{to}"
@@ -296,7 +332,7 @@ init_graph = (hr) ->
 
 load_graph = (times_list) ->
   record_times = [{
-    "interval_s": 60 * 1
+    "interval_s": 60 * 5
     "data": times_list
   }]
   chart = visavailChart().margin_left(1).width($("#local_recordings_tab .left-column").width() - 1)
@@ -310,21 +346,27 @@ load_graph = (times_list) ->
 
 on_graph_click = ->
   $("#local_recordings_tab").on "mousemove", ".rect_has_data", (ev) ->
-    sliderStartX = $("#time_graph").offset().left
-    sliderEndX = sliderStartX + $("#time_graph").width()
-
-    from = moment("#{$(this).attr("from")}").format('DD-MM-GGGG HH:mm:ss')
-    to = moment("#{$(this).attr("to")}").format('DD-MM-GGGG HH:mm:ss')
-    $("#div-tooltip").html("#{from} - #{to}")
-    $("#div-tooltip").css({ top: "#{ev.pageY + 15}px", left: "#{ev.pageX - 90}px" })
+    from_dt = moment.utc("#{$(this).attr("from")}", "YYYY-MM-DD HH:mm:ss")
+    from = from_dt.format('DD-MM-GGGG HH:mm:ss')
+    to = moment("#{$(this).attr("to")}", "YYYY-MM-DD HH:mm:ss").format('DD-MM-GGGG HH:mm')
+    $("#div-tooltip div#spn_datetime").html("#{from} - #{to}")
+    if thumbnails_array["#{from_dt / 1000}"] is undefined
+      $("#tooltip-img").hide()
+      $("#div-tooltip").css({ top: "#{ev.pageY - 25}px", left: "#{ev.pageX - 90}px" })
+    else
+      $("#tooltip-img").show()
+      $("#nvr-img-popup").attr("src", thumbnails_array["#{from_dt / 1000}"])
+      $("#div-tooltip").css({ top: "#{ev.pageY - 140}px", left: "#{ev.pageX - 90}px" })
     $("#div-tooltip").show()
 
   $("#local_recordings_tab").on "click", ".rect_has_data", (ev) ->
     if window.vjs_player_local
       window.vjs_player_local.pause()
     $("#local-recording-video-player .vjs-loading-spinner").show()
-    from = moment.tz("#{$(this).attr("from")}", Evercam.Camera.timezone) / 1000
-    to = moment.tz("#{$(this).attr("to")}", Evercam.Camera.timezone) / 1000
+    $("#local_recordings_tab .rect_has_data").removeClass("rect_has_data_active")
+    $(this).addClass("rect_has_data_active")
+    from = moment.utc("#{$(this).attr("from")}", "YYYY-MM-DD HH:mm:ss") / 1000
+    to = moment.utc("#{$(this).attr("to")}", "YYYY-MM-DD HH:mm:ss") / 1000
     load_stream(from, to)
 
 walkDaysInMonth = (year, month) ->
